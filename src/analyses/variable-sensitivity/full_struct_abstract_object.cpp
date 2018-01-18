@@ -260,7 +260,7 @@ sharing_ptrt<struct_abstract_objectt>
 
     copy->map[c]=
       environment.write(starting_value, value, stack, ns, merging_write);
-    copy->top=false;
+    copy->clear_top();
     assert(copy->verify());
     return copy;
   }
@@ -300,7 +300,7 @@ sharing_ptrt<struct_abstract_objectt>
     else
     {
       copy->map[c]=value;
-      copy->top=false;
+      copy->clear_top();
       assert(!copy->is_bottom());
     }
 

@@ -81,7 +81,7 @@ constant_array_abstract_objectt::constant_array_abstract_objectt(
       map[mp_integer(index)]=environment.eval(entry, ns);
       ++index;
     }
-    top=false;
+    clear_top();
   }
 }
 
@@ -362,7 +362,7 @@ sharing_ptrt<array_abstract_objectt>
       {
         if(is_top())
         {
-          copy->top=false;
+          copy->clear_top();
         }
 
         copy->map[index_value]=value;
@@ -398,7 +398,7 @@ sharing_ptrt<array_abstract_objectt>
 
         if(is_top())
         {
-          copy->top=false;
+          copy->clear_top();
         }
         copy->map[index_value]=environment.write(
           array_entry, value, stack, ns, merging_write);
@@ -415,7 +415,7 @@ sharing_ptrt<array_abstract_objectt>
               array_entry.second, value, stack, ns, true);
           if(is_top())
           {
-            copy->top=false;
+            copy->clear_top();
           }
         }
 
