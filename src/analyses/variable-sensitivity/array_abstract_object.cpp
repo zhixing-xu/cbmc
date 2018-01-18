@@ -80,6 +80,64 @@ array_abstract_objectt::array_abstract_objectt(
 
 /*******************************************************************\
 
+Function: abstract_objectt::read
+
+  Inputs:
+   env - the abstract environment
+   specifier - a modifier expression, such as an array index or field specifier
+          used to indicate access to a specific component
+
+ Outputs: The abstract_objectt representing the value of that component. For
+          this default implementation, we just return `this`. Sub-classes are
+          expected to extend this implementation to match their behaviour.
+
+ Purpose: A helper function to evaluate an abstract object contained
+          within a container object. More precise abstractions may override this
+          to return more precise results.
+
+\*******************************************************************/
+
+abstract_object_pointert array_abstract_objectt::read(
+  const abstract_environmentt &env,
+  const exprt &specifier,
+  const namespacet &ns) const
+{
+  return read_index(env, to_index_expr(specifier), ns);
+}
+
+/*******************************************************************\
+
+Function: abstract_objectt::write
+
+  Inputs:
+   environment - the abstract environment
+   stack - the remaining stack of expressions on the LHS to evaluate
+   specifier - the expression uses to access a specific component
+   value - the value we are trying to write to the component
+
+ Outputs: The abstract_objectt representing the result of writing
+          to a specific component. 
+ 
+Purpose: A helper function to evaluate writing to a component of an
+          abstract object. More precise abstractions may override this to
+          update what they are storing for a specific component.
+
+\*******************************************************************/
+abstract_object_pointert array_abstract_objectt::write(
+  abstract_environmentt &environment,
+  const namespacet &ns,
+  const std::stack<exprt> stack,
+  const exprt &specifier,
+  const abstract_object_pointert value,
+  bool merging_write) const
+{
+  return write_index(
+    environment, ns, stack, to_index_expr(specifier), value, merging_write);
+}
+
+
+/*******************************************************************\
+
 Function: array_abstract_objectt::read_index
 
   Inputs:

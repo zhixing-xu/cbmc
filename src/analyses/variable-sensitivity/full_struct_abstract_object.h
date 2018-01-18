@@ -32,17 +32,16 @@ public:
     const namespacet &ns);
 
 
-  // struct interface
-  virtual abstract_object_pointert read_component(
-    const abstract_environmentt &environment,
-    const member_exprt &member_expr,
-    const namespacet& ns) const override;
+  virtual abstract_object_pointert read(
+    const abstract_environmentt &env,
+    const exprt &specifier,
+    const namespacet &ns) const override;
 
-  virtual sharing_ptrt<struct_abstract_objectt> write_component(
+  virtual abstract_object_pointert write(
     abstract_environmentt &environment,
     const namespacet &ns,
-    const std::stack<exprt> &stack,
-    const member_exprt &member_expr,
+    const std::stack<exprt> stack,
+    const exprt &specifier,
     const abstract_object_pointert value,
     bool merging_write) const override;
 
@@ -63,6 +62,20 @@ private:
 
 protected:
   CLONE
+
+  // struct interface
+  virtual abstract_object_pointert read_component(
+    const abstract_environmentt &environment,
+    const member_exprt &member_expr,
+    const namespacet& ns) const override;
+
+  virtual sharing_ptrt<struct_abstract_objectt> write_component(
+    abstract_environmentt &environment,
+    const namespacet &ns,
+    const std::stack<exprt> &stack,
+    const member_exprt &member_expr,
+    const abstract_object_pointert value,
+    bool merging_write) const override;
 
   bool verify() const;
   // Set the state of this to the merge result of op1 and op2 and
