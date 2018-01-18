@@ -32,7 +32,7 @@ void dependency_context_abstract_objectt::clear_top_internal()
 
 /*******************************************************************\
 
-Function: dependency_context_abstract_objectt::update_last_written_locations
+Function: dependency_context_abstract_objectt::update_location_context
 
   Inputs:
    Set of locations to be written.
@@ -47,7 +47,7 @@ Function: dependency_context_abstract_objectt::update_last_written_locations
 
 \*******************************************************************/
 abstract_object_pointert
-  dependency_context_abstract_objectt::update_last_written_locations(
+  dependency_context_abstract_objectt::update_location_context(
     const abstract_objectt::locationst &locations,
     const bool update_sub_elements) const
 {
@@ -55,8 +55,14 @@ abstract_object_pointert
     std::dynamic_pointer_cast<dependency_context_abstract_objectt>(
       mutable_clone());
 
-  result->set_child(child_abstract_object->update_last_written_locations(
-    locations, update_sub_elements));
+  if(update_sub_elements)
+  {
+    abstract_object_pointert visited_child=
+      child_abstract_object->
+        update_location_context(locations, update_sub_elements)->
+          visit_sub_elements(location_update_visitor(locations));
+    result->set_child(visited_child);
+  }
 
   result->set_last_written_locations(locations);
   return result;
@@ -253,7 +259,7 @@ abstract_object_pointert
     if(location_union.size()>get_last_written_locations().size())
     {
       abstract_object_pointert result=mutable_clone();
-      return result->update_last_written_locations(location_union, false);
+      return result->update_location_context(location_union, false);
     }
   }
   return shared_from_this();
