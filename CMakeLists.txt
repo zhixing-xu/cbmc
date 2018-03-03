@@ -51,6 +51,8 @@ set_target_properties(
     big-int
     cbmc
     cbmc-lib
+    ccover
+    ccover-lib
     clobber
     clobber-lib
     cpp

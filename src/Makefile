@@ -3,6 +3,7 @@ DIRS = analyses \
        assembler \
        big-int \
        cbmc \
+       ccover \
        clobber \
        cpp \
        goto-analyzer \
@@ -23,6 +24,7 @@ DIRS = analyses \
        # Empty last line
 
 all: cbmc.dir \
+     ccover.dir \
      goto-analyzer.dir \
      goto-cc.dir \
      goto-diff.dir \
@@ -54,6 +56,8 @@ goto-instrument.dir: languages goto-programs.dir pointer-analysis.dir \
 cbmc.dir: languages solvers.dir goto-symex.dir analyses.dir \
           pointer-analysis.dir goto-programs.dir linking.dir \
           goto-instrument.dir
+
+ccover.dir: cbmc.dir
 
 goto-analyzer.dir: languages analyses.dir goto-programs.dir linking.dir \
                    json.dir goto-instrument.dir

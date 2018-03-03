@@ -99,6 +99,7 @@ add_subdirectory(xmllang)
 add_subdirectory(clobber)
 
 add_subdirectory(cbmc)
+add_subdirectory(ccover)
 add_subdirectory(goto-cc)
 add_subdirectory(goto-instrument)
 add_subdirectory(goto-analyzer)
