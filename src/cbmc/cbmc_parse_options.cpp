@@ -53,7 +53,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-instrument/reachability_slicer.h>
 #include <goto-instrument/full_slicer.h>
 #include <goto-instrument/nondet_static.h>
-#include <goto-instrument/cover.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
@@ -144,9 +143,6 @@ void cbmc_parse_optionst::get_command_line_options(optionst &options)
 
   if(cmdline.isset("show-vcc"))
     options.set_option("show-vcc", true);
-
-  if(cmdline.isset("cover"))
-    parse_cover_options(cmdline, options);
 
   if(cmdline.isset("mm"))
     options.set_option("mm", cmdline.get_value("mm"));
@@ -773,13 +769,6 @@ bool cbmc_parse_optionst::process_goto_program(
     // for coverage annotation:
     remove_skip(goto_model);
 
-    // instrument cover goals
-    if(options.is_set("cover"))
-    {
-      if(instrument_cover_goals(options, goto_model, log.get_message_handler()))
-        return true;
-    }
-
     // label the assertions
     // This must be done after adding assertions and
     // before using the argument of the "property" option.
@@ -818,7 +807,7 @@ bool cbmc_parse_optionst::process_goto_program(
         full_slicer(goto_model);
     }
 
-    // remove any skips introduced since coverage instrumentation
+    // remove any skips
     remove_skip(goto_model);
   }
 
@@ -931,7 +920,6 @@ void cbmc_parse_optionst::help()
     " --no-assertions              ignore user assertions\n"
     " --no-assumptions             ignore user assumptions\n"
     " --error-label label          check that label is unreachable\n"
-    " --cover CC                   create test-suite with coverage criterion CC\n" // NOLINT(*)
     " --mm MM                      memory consistency model for concurrent programs\n" // NOLINT(*)
     HELP_REACHABILITY_SLICER
     " --full-slice                 run full slicer (experimental)\n" // NOLINT(*)

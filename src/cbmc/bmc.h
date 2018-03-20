@@ -211,14 +211,7 @@ protected:
   void slice();
   void show();
 
-  bool cover(
-    const goto_functionst &goto_functions,
-    const optionst::value_listt &criteria);
-
   friend class bmc_all_propertiest;
-  friend class bmc_covert;
-  template <template <class goalt> class covert>
-  friend class bmc_goal_covert;
   friend class fault_localizationt;
 
 private:
