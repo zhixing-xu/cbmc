@@ -255,7 +255,7 @@ void goto_symext::symex_assign_symbol(
     log.debug(),
     [this, &ssa_lhs](messaget::mstreamt &mstream) {
       mstream << "Assignment to " << ssa_lhs.get_identifier()
-              << " [" << pointer_offset_bits(ssa_lhs.type(), ns) << " bits]"
+              << " [" << *pointer_offset_bits(ssa_lhs.type(), ns) << " bits]"
               << messaget::eom;
     });
 

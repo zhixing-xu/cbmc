@@ -565,15 +565,15 @@ void smt2_convt::convert_address_of_rec(
       const irep_idt &component_name=
         member_expr.get_component_name();
 
-      mp_integer offset=member_offset(struct_type, component_name, ns);
-      assert(offset>=0);
+      auto offset = member_offset(struct_type, component_name, ns);
+      CHECK_RETURN(offset.has_value());
 
       unsignedbv_typet index_type(boolbv_width(result_type));
 
       // pointer arithmetic
       out << "(bvadd ";
       convert_address_of_rec(struct_op, result_type);
-      convert_expr(from_integer(offset, index_type));
+      convert_expr(from_integer(*offset, index_type));
       out << ")"; // bvadd
     }
     else
@@ -2996,20 +2996,19 @@ void smt2_convt::convert_plus(const plus_exprt &expr)
         if(p.type().id()!=ID_pointer)
           INVALIDEXPR("unexpected mixture in pointer arithmetic");
 
-        mp_integer element_size=
-          pointer_offset_size(expr.type().subtype(), ns);
-        CHECK_RETURN(element_size>0);
+        auto element_size = pointer_offset_size(expr.type().subtype(), ns);
+        CHECK_RETURN(element_size.has_value() && *element_size >= 1);
 
         out << "(bvadd ";
         convert_expr(p);
         out << " ";
 
-        if(element_size>=2)
+        if(*element_size >= 2)
         {
           out << "(bvmul ";
           convert_expr(i);
-          out << " (_ bv" << element_size
-              << " " << boolbv_width(expr.type()) << "))";
+          out << " (_ bv" << *element_size << " " << boolbv_width(expr.type())
+              << "))";
         }
         else
           convert_expr(i);
@@ -3180,12 +3179,11 @@ void smt2_convt::convert_minus(const minus_exprt &expr)
     if(expr.op0().type().id()==ID_pointer &&
        expr.op1().type().id()==ID_pointer)
     {
-      // Pointer difference.
-      mp_integer element_size=
-        pointer_offset_size(expr.op0().type().subtype(), ns);
-      assert(element_size>0);
+      // Pointer difference
+      auto element_size = pointer_offset_size(expr.op0().type().subtype(), ns);
+      CHECK_RETURN(element_size.has_value() && *element_size >= 1);
 
-      if(element_size>=2)
+      if(*element_size >= 2)
         out << "(bvsdiv ";
 
       assert(boolbv_width(expr.op0().type())==boolbv_width(expr.type()));
@@ -3196,9 +3194,9 @@ void smt2_convt::convert_minus(const minus_exprt &expr)
       convert_expr(expr.op1());
       out << ")";
 
-      if(element_size>=2)
-        out << " (_ bv" << element_size
-            << " " << boolbv_width(expr.type()) << "))";
+      if(*element_size >= 2)
+        out << " (_ bv" << *element_size << " " << boolbv_width(expr.type())
+            << "))";
     }
     else
     {
@@ -3833,12 +3831,12 @@ void smt2_convt::convert_member(const member_exprt &expr)
     {
       // we extract
       std::size_t member_width=boolbv_width(expr.type());
-      mp_integer member_offset=::member_offset(struct_type, name, ns);
-      if(member_offset==-1)
+      auto member_offset = ::member_offset(struct_type, name, ns);
+      if(!member_offset.has_value())
         INVALIDEXPR("failed to get struct member offset");
 
-      out << "((_ extract " << (member_offset*8+member_width-1)
-          << " " << member_offset*8 << ") ";
+      out << "((_ extract " << ((*member_offset) * 8 + member_width - 1) << " "
+          << (*member_offset) * 8 << ") ";
       convert_expr(struct_op);
       out << ")";
     }

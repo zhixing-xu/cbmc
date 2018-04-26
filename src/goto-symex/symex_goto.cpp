@@ -254,7 +254,7 @@ void goto_symext::symex_goto(statet &state)
         log.debug(),
         [this, &new_lhs](messaget::mstreamt &mstream) {
           mstream << "Assignment to " << new_lhs.get_identifier()
-                  << " [" << pointer_offset_bits(new_lhs.type(), ns) << " bits]"
+                  << " [" << *pointer_offset_bits(new_lhs.type(), ns) << " bits]"
                   << messaget::eom;
         });
 
@@ -486,7 +486,7 @@ void goto_symext::phi_function(
       log.debug(),
       [this, &new_lhs](messaget::mstreamt &mstream) {
         mstream << "Assignment to " << new_lhs.get_identifier()
-                << " [" << pointer_offset_bits(new_lhs.type(), ns) << " bits]"
+                << " [" << *pointer_offset_bits(new_lhs.type(), ns) << " bits]"
                 << messaget::eom;
       });
 

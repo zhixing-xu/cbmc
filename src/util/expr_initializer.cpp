@@ -266,13 +266,13 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
       if(it->type().id()==ID_code)
         continue;
 
-      mp_integer bits=pointer_offset_bits(it->type(), ns);
+      auto bits = pointer_offset_bits(it->type(), ns);
 
-      if(bits>component_size)
+      if(bits.has_value() && *bits > component_size)
       {
         component=*it;
         found=true;
-        component_size=bits;
+        component_size = *bits;
       }
     }
 
