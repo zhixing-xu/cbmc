@@ -670,6 +670,8 @@ IREP_ID_ONE(bits_per_byte)
 IREP_ID_TWO(C_abstract, #abstract)
 IREP_ID_ONE(synthetic)
 IREP_ID_ONE(interface)
+IREP_ID_ONE(r_ok)
+IREP_ID_ONE(w_ok)
 
 // Projects depending on this code base that wish to extend the list of
 // available ids should provide a file local_irep_ids.h in their source tree and
