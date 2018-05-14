@@ -104,14 +104,14 @@ public:
   // for assert
   std::string comment;
 
-  // the object being assigned
-  ssa_exprt lhs_object;
-
-  // the full, original lhs expression
+  // the full, original lhs expression, after dereferencing
   exprt full_lhs;
 
-  // A constant with the new value
-  exprt lhs_object_value, full_lhs_value;
+  // the object being assigned
+  optionalt<symbol_exprt> get_lhs_object() const;
+
+  // A constant with the new value of the lhs
+  exprt full_lhs_value;
 
   // for INPUT/OUTPUT
   irep_idt format_string, io_id;
@@ -138,8 +138,6 @@ public:
     cond_value(false),
     formatted(false)
   {
-    lhs_object.make_nil();
-    lhs_object_value.make_nil();
     full_lhs.make_nil();
     full_lhs_value.make_nil();
     cond_expr.make_nil();
@@ -203,8 +201,7 @@ void show_goto_trace(
 void trace_value(
   std::ostream &out,
   const namespacet &,
-  const ssa_exprt &lhs_object,
-  const exprt &full_lhs,
+  const exprt &lhs,
   const exprt &value);
 
 

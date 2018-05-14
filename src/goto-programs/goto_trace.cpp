@@ -291,7 +291,7 @@ void show_goto_trace(
       if(step.pc->is_assign() ||
          step.pc->is_return() || // returns have a lhs!
          step.pc->is_function_call() ||
-         (step.pc->is_other() && step.lhs_object.is_not_nil()))
+         (step.pc->is_other() && step.full_lhs.is_not_nil()))
       {
         if(prev_step_nr!=step.step_nr || first_step)
         {
@@ -300,13 +300,8 @@ void show_goto_trace(
           show_state_header(out, step, step.pc->source_location, step.step_nr);
         }
 
-        // see if the full lhs is something clean
-        if(is_index_member_symbol(step.full_lhs))
-          trace_value(
-            out, ns, step.lhs_object, step.full_lhs, step.full_lhs_value);
-        else
-          trace_value(
-            out, ns, step.lhs_object, step.lhs_object, step.lhs_object_value);
+        trace_value(
+          out, ns, step.full_lhs, step.full_lhs_value);
       }
       break;
 
@@ -318,7 +313,7 @@ void show_goto_trace(
         show_state_header(out, step, step.pc->source_location, step.step_nr);
       }
 
-      trace_value(out, ns, step.lhs_object, step.full_lhs, step.full_lhs_value);
+      trace_value(out, ns, step.full_lhs, step.full_lhs_value);
       break;
 
     case goto_trace_stept::typet::OUTPUT:

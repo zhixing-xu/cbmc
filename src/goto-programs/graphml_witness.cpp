@@ -278,7 +278,7 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
         }
 
         if(it->type==goto_trace_stept::typet::ASSIGNMENT &&
-           it->lhs_object_value.is_not_nil() &&
+           it->full_lhs_value.is_not_nil() &&
            it->full_lhs.is_not_nil())
         {
           if(!it->lhs_object_value.is_constant() ||
