@@ -187,7 +187,7 @@ static std::string type2name(
     else
       result+="ARR"+integer2string(size);
   }
-  else if(type.id()==ID_symbol ||
+  else if(type.id()==ID_symbol_type ||
           type.id()==ID_c_enum_tag ||
           type.id()==ID_struct_tag ||
           type.id()==ID_union_tag)

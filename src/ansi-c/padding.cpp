@@ -82,8 +82,8 @@ mp_integer alignment(const typet &type, const namespacet &ns)
     result=alignment(type.subtype(), ns);
   else if(type.id()==ID_c_enum_tag)
     result=alignment(ns.follow_tag(to_c_enum_tag_type(type)), ns);
-  else if(type.id()==ID_symbol)
-    result=alignment(ns.follow(type), ns);
+  else if(type.id()==ID_symbol_type)
+    result=alignment(ns.follow(to_symbol_type(type)), ns);
   else if(type.id()==ID_c_bit_field)
   {
     // we align these according to the 'underlying type'

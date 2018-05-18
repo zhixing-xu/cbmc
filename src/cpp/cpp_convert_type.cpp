@@ -574,7 +574,7 @@ void cpp_convert_plain_type(typet &type)
      type.id()==ID_bool ||
      type.id()==ID_floatbv ||
      type.id()==ID_empty ||
-     type.id()==ID_symbol ||
+     type.id()==ID_symbol_type ||
      type.id()==ID_constructor ||
      type.id()==ID_destructor)
   {

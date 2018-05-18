@@ -565,7 +565,7 @@ void ci_lazy_methodst::gather_field_types(
   {
     // If class_type is not a symbol this may be a reference array,
     // but we can't tell what type.
-    if(class_type.id() == ID_symbol)
+    if(class_type.id() == ID_symbol_type)
     {
       const typet &element_type =
         java_array_element_type(to_symbol_type(class_type));
@@ -581,11 +581,11 @@ void ci_lazy_methodst::gather_field_types(
   {
     for(const auto &field : underlying_type.components())
     {
-      if(field.type().id() == ID_struct || field.type().id() == ID_symbol)
+      if(field.type().id() == ID_struct || field.type().id() == ID_symbol_type)
         gather_field_types(field.type(), ns, needed_lazy_methods);
       else if(field.type().id() == ID_pointer)
       {
-        if(field.type().subtype().id() == ID_symbol)
+        if(field.type().subtype().id() == ID_symbol_type)
         {
           initialize_all_instantiated_classes_from_pointer(
             to_pointer_type(field.type()), ns, needed_lazy_methods);

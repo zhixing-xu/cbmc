@@ -252,7 +252,7 @@ bool check_c_implicit_typecast(
 
 typet c_typecastt::follow_with_qualifiers(const typet &src_type)
 {
-  if(src_type.id()!=ID_symbol)
+  if(src_type.id()!=ID_symbol_type)
     return src_type;
 
   typet result_type=src_type;
@@ -260,7 +260,7 @@ typet c_typecastt::follow_with_qualifiers(const typet &src_type)
   // collect qualifiers
   c_qualifierst qualifiers(src_type);
 
-  while(result_type.id()==ID_symbol)
+  while(result_type.id()==ID_symbol_type)
   {
     const symbolt &followed_type_symbol =
       ns.lookup(to_symbol_type(result_type));
@@ -345,7 +345,7 @@ c_typecastt::c_typet c_typecastt::get_c_type(
   {
     return INT;
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id()==ID_symbol_type)
     return get_c_type(ns.follow(type));
   else if(type.id()==ID_rational)
     return RATIONAL;
