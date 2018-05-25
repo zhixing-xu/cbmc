@@ -16,9 +16,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "string_container.h"
 
-// Marked final to disable inheritance.
-// No virtual destructor, so runtime-polymorphic use would be unsafe.
-class dstringt final
+class dstringt
 {
 public:
   // this is safe for static objects
@@ -140,7 +138,7 @@ public:
     return no;
   }
 
-private:
+protected:
   #ifdef __GNUC__
   constexpr
   #endif
