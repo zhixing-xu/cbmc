@@ -86,6 +86,20 @@ protected:
     bool address);
   void check(const exprt &expr);
 
+  struct conditiont
+  {
+    conditiont(const exprt &_assertion, const std::string &_description):
+      assertion(_assertion),
+      description(_description)
+    {
+    }
+
+    exprt assertion;
+    std::string description;
+  };
+
+  using conditionst=std::list<conditiont>;
+
   void bounds_check(const index_exprt &expr, const guardt &guard);
   void div_by_zero_check(const div_exprt &expr, const guardt &guard);
   void mod_by_zero_check(const mod_exprt &expr, const guardt &guard);
@@ -97,10 +111,14 @@ protected:
     const guardt &guard,
     const exprt &access_lb,
     const exprt &access_ub);
+  conditionst address_check(
+    const exprt &address,
+    const exprt &size);
   void integer_overflow_check(const exprt &expr, const guardt &guard);
   void conversion_check(const exprt &expr, const guardt &guard);
   void float_overflow_check(const exprt &expr, const guardt &guard);
   void nan_check(const exprt &expr, const guardt &guard);
+  void rw_ok_check(exprt &expr);
 
   std::string array_name(const exprt &expr);
 
@@ -1078,6 +1096,159 @@ void goto_checkt::pointer_validity_check(
   }
 }
 
+goto_checkt::conditionst goto_checkt::address_check(
+  const exprt &address,
+  const exprt &size)
+{
+  if(!enable_pointer_check)
+    return {};
+
+  PRECONDITION(address.type().id()==ID_pointer);
+  const auto &pointer_type=to_pointer_type(address.type());
+
+  local_bitvector_analysist::flagst flags=
+    local_bitvector_analysis->get(t, address);
+
+  // For Java, we only need to check for null
+  if(mode==ID_java)
+  {
+    if(flags.is_unknown() || flags.is_null())
+    {
+      notequal_exprt not_eq_null(address, null_pointer_exprt(pointer_type));
+
+      return { conditiont(not_eq_null, "reference is null") };
+    }
+  }
+  else
+  {
+    #if 0
+    exprt allocs=false_exprt();
+
+    if(!allocations.empty())
+    {
+      exprt::operandst disjuncts;
+
+      for(const auto &a : allocations)
+      {
+        typecast_exprt int_ptr(pointer, a.first.type());
+
+        exprt lb(int_ptr);
+        if(access_lb.is_not_nil())
+        {
+          if(!base_type_eq(lb.type(), access_lb.type(), ns))
+            lb=plus_exprt(lb, typecast_exprt(access_lb, lb.type()));
+          else
+            lb=plus_exprt(lb, access_lb);
+        }
+
+        binary_relation_exprt lb_check(a.first, ID_le, lb);
+
+        exprt ub(int_ptr);
+        if(access_ub.is_not_nil())
+        {
+          if(!base_type_eq(ub.type(), access_ub.type(), ns))
+            ub=plus_exprt(ub, typecast_exprt(access_ub, ub.type()));
+          else
+            ub=plus_exprt(ub, access_ub);
+        }
+
+        binary_relation_exprt ub_check(
+          ub, ID_le, plus_exprt(a.first, a.second));
+
+        disjuncts.push_back(and_exprt(lb_check, ub_check));
+      }
+
+      allocs=disjunction(disjuncts);
+    }
+
+    if(flags.is_unknown() || flags.is_null())
+    {
+      add_guarded_claim(
+        or_exprt(allocs, not_exprt(null_pointer(pointer))),
+        "dereference failure: pointer NULL",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+    }
+
+    if(flags.is_unknown())
+      add_guarded_claim(
+        or_exprt(allocs, not_exprt(invalid_pointer(pointer))),
+        "dereference failure: pointer invalid",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+
+    if(flags.is_uninitialized())
+      add_guarded_claim(
+        or_exprt(allocs, not_exprt(invalid_pointer(pointer))),
+        "dereference failure: pointer uninitialized",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+
+    if(flags.is_unknown() || flags.is_dynamic_heap())
+      add_guarded_claim(
+        or_exprt(allocs, not_exprt(deallocated(pointer, ns))),
+        "dereference failure: deallocated dynamic object",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+
+    if(flags.is_unknown() || flags.is_dynamic_local())
+      add_guarded_claim(
+        or_exprt(allocs, not_exprt(dead_object(pointer, ns))),
+        "dereference failure: dead object",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+
+    if(flags.is_unknown() || flags.is_dynamic_heap())
+    {
+      const or_exprt dynamic_bounds(
+        dynamic_object_lower_bound(pointer, ns, access_lb),
+        dynamic_object_upper_bound(pointer, dereference_type, ns, access_ub));
+
+      add_guarded_claim(
+        or_exprt(
+          allocs,
+          implies_exprt(
+            malloc_object(pointer, ns),
+            not_exprt(dynamic_bounds))),
+        "dereference failure: pointer outside dynamic object bounds",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+    }
+
+    if(flags.is_unknown() ||
+       flags.is_dynamic_local() ||
+       flags.is_static_lifetime())
+    {
+      const or_exprt object_bounds(
+        object_lower_bound(pointer, ns, access_lb),
+        object_upper_bound(pointer, dereference_type, ns, access_ub));
+
+      add_guarded_claim(
+        or_exprt(allocs, dynamic_object(pointer), not_exprt(object_bounds)),
+        "dereference failure: pointer outside object bounds",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+    }
+    #endif
+  }
+
+  return {};
+}
+
 std::string goto_checkt::array_name(const exprt &expr)
 {
   return ::array_name(ns, expr);
@@ -1496,6 +1667,22 @@ void goto_checkt::check(const exprt &expr)
   check_rec(expr, guard, false);
 }
 
+/// expand the r_ok and w_ok predicates
+void goto_checkt::rw_ok_check(exprt &expr)
+{
+  for(auto &op : expr.operands())
+    rw_ok_check(op);
+
+  if(expr.id()==ID_r_ok || expr.id()==ID_w_ok)
+  {
+    // these get an address as first argument and a size as second
+    DATA_INVARIANT(expr.operands().size()==2,
+                   "r/w_ok must have two operands");
+
+    expr=false_exprt();
+  }
+}
+
 void goto_checkt::goto_check(
   goto_functiont &goto_function,
   const irep_idt &_mode)
@@ -1650,6 +1837,9 @@ void goto_checkt::goto_check(
     else if(i.is_assert())
     {
       bool is_user_provided=i.source_location.get_bool("user-provided");
+
+      rw_ok_check(i.guard);
+
       if((is_user_provided && !enable_assertions &&
           i.source_location.get_property_class()!="error label") ||
          (!is_user_provided && !enable_built_in_assertions))
