@@ -135,3 +135,10 @@ dist/
 
 # auto generated documentation
 doc/html/
+
+# testing and tagging files
+src/TAGS
+src/goto-cc/goto-gcc
+src/goto-cc/tut/
+src/goto-programs/tags
+src/tags
