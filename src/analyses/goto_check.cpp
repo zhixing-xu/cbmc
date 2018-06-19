@@ -45,6 +45,7 @@ public:
     local_bitvector_analysis(nullptr)
   {
     enable_bounds_check=_options.get_bool_option("bounds-check");
+    enable_bounds_check_only=_options.get_bool_option("bounds-check");
     enable_pointer_check=_options.get_bool_option("pointer-check");
     enable_memory_leak_check=_options.get_bool_option("memory-leak-check");
     enable_div_by_zero_check=_options.get_bool_option("div-by-zero-check");
@@ -119,6 +120,7 @@ protected:
   void invalidate(const exprt &lhs);
 
   bool enable_bounds_check;
+  bool enable_bounds_check_only;  //zx
   bool enable_pointer_check;
   bool enable_memory_leak_check;
   bool enable_div_by_zero_check;
@@ -1085,7 +1087,7 @@ void goto_checkt::bounds_check(
   const index_exprt &expr,
   const guardt &guard)
 {
-  if(!enable_bounds_check)
+  if(!enable_bounds_check && !enable_bounds_check_only)
     return;
 
   if(expr.find("bounds_check").is_not_nil() &&

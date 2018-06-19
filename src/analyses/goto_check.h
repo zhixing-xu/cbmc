@@ -34,13 +34,15 @@ void goto_check(
   goto_modelt &goto_model);
 
 #define OPT_GOTO_CHECK \
-  "(bounds-check)(pointer-check)(memory-leak-check)" \
+  "(bounds-check)(bounds-check-only)(pointer-check)(memory-leak-check)" \
   "(div-by-zero-check)(signed-overflow-check)(unsigned-overflow-check)" \
   "(pointer-overflow-check)(conversion-check)(undefined-shift-check)" \
   "(float-overflow-check)(nan-check)(no-built-in-assertions)"
 
+// zx: bounds-check-only is for memory safety only check. Not dealing with dereference reduce verification overhead.
 #define HELP_GOTO_CHECK \
   " --bounds-check               enable array bounds checks\n" \
+  " --bounds-check-only          enable array bounds checks, but delete the array dereference line in go-to program\n" \
   " --pointer-check              enable pointer checks (always enabled for Java)\n" /* NOLINT(whitespace/line_length) */ \
   " --memory-leak-check          enable memory leak checks\n" \
   " --div-by-zero-check          enable division by zero checks\n" \
@@ -55,6 +57,7 @@ void goto_check(
 
 #define PARSE_OPTIONS_GOTO_CHECK(cmdline, options) \
   options.set_option("bounds-check", cmdline.isset("bounds-check")); \
+  options.set_option("bounds-check-only", cmdline.isset("bounds-check-only")); \
   options.set_option("pointer-check", cmdline.isset("pointer-check")); \
   options.set_option("memory-leak-check", cmdline.isset("memory-leak-check")); \
   options.set_option("div-by-zero-check", cmdline.isset("div-by-zero-check")); \
