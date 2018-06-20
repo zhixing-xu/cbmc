@@ -35,6 +35,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "local_bitvector_analysis.h"
 
+#include <stdio.h>
+#include <iostream>
+
 class goto_checkt
 {
 public:
@@ -45,7 +48,7 @@ public:
     local_bitvector_analysis(nullptr)
   {
     enable_bounds_check=_options.get_bool_option("bounds-check");
-    enable_bounds_check_only=_options.get_bool_option("bounds-check");
+    enable_bounds_check_only=_options.get_bool_option("bounds-check-only");
     enable_pointer_check=_options.get_bool_option("pointer-check");
     enable_memory_leak_check=_options.get_bool_option("memory-leak-check");
     enable_div_by_zero_check=_options.get_bool_option("div-by-zero-check");
@@ -68,6 +71,7 @@ public:
     enable_built_in_assertions=_options.get_bool_option("built-in-assertions");
     enable_assumptions=_options.get_bool_option("assumptions");
     error_labels=_options.get_list_option("error-label");
+    has_dereference=false;  //zx
   }
 
   typedef goto_functionst::goto_functiont goto_functiont;
@@ -137,6 +141,8 @@ protected:
   bool enable_assertions;
   bool enable_built_in_assertions;
   bool enable_assumptions;
+
+  bool has_dereference; //zx
 
   typedef optionst::value_listt error_labelst;
   error_labelst error_labels;
@@ -1094,6 +1100,10 @@ void goto_checkt::bounds_check(
      !expr.get_bool("bounds_check"))
     return;
 
+//ZX
+  if(enable_bounds_check_only)
+    std::cerr << "DEBUG: enable bounds check only\n";
+
   typet array_type=ns.follow(expr.array().type());
 
   if(array_type.id()==ID_pointer)
@@ -1107,6 +1117,7 @@ void goto_checkt::bounds_check(
   std::string name=array_name(expr.array());
 
   const exprt &index=expr.index();
+  std::cerr << "expr index " << index.id() << "\n";
   object_descriptor_exprt ode;
   ode.build(expr, ns);
 
@@ -1323,6 +1334,7 @@ void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
     else if(expr.id()==ID_index)
     {
       assert(expr.operands().size()==2);
+      //std::cerr << "expr info at address=true && ID_index " << expr.id().get_no() << "\n";
       check_rec(expr.op0(), guard, true);
       check_rec(expr.op1(), guard, false);
     }
@@ -1429,7 +1441,20 @@ void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
 
   if(expr.id()==ID_index)
   {
+    std::cerr << "expr info at address == false && ID_index, ID = " << expr.id() \
+      << ", no = "<< expr.id().get_no() << ", source location: " << expr.source_location() << "\n";
+    std::cerr << "iterate through expression ids: \n";
+    forall_operands(it, expr)
+      std::cerr << expr.id() << " no = " << expr.id().get_no() << "  ";
     bounds_check(to_index_expr(expr), guard);
+
+    //zx
+    if (enable_bounds_check_only){
+      has_dereference = true;
+      //printf("has_dereference = true for expression id: %d \n", expr.id().get_no());
+      //std::cerr << "has_dereference = true for expression id: " << expr.id().get_no() << "\n";
+    }
+
   }
   else if(expr.id()==ID_div)
   {
@@ -1567,6 +1592,14 @@ void goto_checkt::goto_check(
 
       // the LHS might invalidate any assertion
       invalidate(code_assign.lhs());
+
+      //zx
+      if(enable_bounds_check_only && has_dereference){
+        has_dereference = false;
+        //std::cerr << "found dereference at: " << i.location_number << "\n";
+        i.make_skip();
+      }
+
     }
     else if(i.is_function_call())
     {
