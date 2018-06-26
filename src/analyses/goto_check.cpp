@@ -37,6 +37,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <stdio.h>
 #include <iostream>
+#include <util/expr_iterator.h>
+#include <set>
 
 class goto_checkt
 {
@@ -71,7 +73,6 @@ public:
     enable_built_in_assertions=_options.get_bool_option("built-in-assertions");
     enable_assumptions=_options.get_bool_option("assumptions");
     error_labels=_options.get_list_option("error-label");
-    has_dereference=false;  //zx
   }
 
   typedef goto_functionst::goto_functiont goto_functiont;
@@ -84,6 +85,14 @@ protected:
   const namespacet &ns;
   local_bitvector_analysist *local_bitvector_analysis;
   goto_programt::const_targett t;
+
+  // The lines that has memory dereference, and if there's assignment,
+  // the symbol of the assigned variable
+  typedef std::set<irep_idt> lines_t;
+  typedef std::map<irep_idt, irep_idt> line_map_t;
+  line_map_t line_assign_map;
+  typedef std::map<irep_idt, lines_t> symbol_map_t;
+  symbol_map_t symbol_line_map;
 
   void check_rec(
     const exprt &expr,
@@ -122,9 +131,11 @@ protected:
   assertionst assertions;
 
   void invalidate(const exprt &lhs);
+  void record_line_assign(const exprt &expr);
+  void record_symbol_lines(const exprt &expr);
+  void check_symbol_line_pair();
 
   bool enable_bounds_check;
-  bool enable_bounds_check_only;  //zx
   bool enable_pointer_check;
   bool enable_memory_leak_check;
   bool enable_div_by_zero_check;
@@ -141,8 +152,7 @@ protected:
   bool enable_assertions;
   bool enable_built_in_assertions;
   bool enable_assumptions;
-
-  bool has_dereference; //zx
+  bool enable_bounds_check_only;
 
   typedef optionst::value_listt error_labelst;
   error_labelst error_labels;
@@ -1100,10 +1110,6 @@ void goto_checkt::bounds_check(
      !expr.get_bool("bounds_check"))
     return;
 
-//ZX
-  if(enable_bounds_check_only)
-    std::cerr << "DEBUG: enable bounds check only\n";
-
   typet array_type=ns.follow(expr.array().type());
 
   if(array_type.id()==ID_pointer)
@@ -1117,7 +1123,6 @@ void goto_checkt::bounds_check(
   std::string name=array_name(expr.array());
 
   const exprt &index=expr.index();
-  std::cerr << "expr index " << index.id() << "\n";
   object_descriptor_exprt ode;
   ode.build(expr, ns);
 
@@ -1318,6 +1323,71 @@ void goto_checkt::add_guarded_claim(
   }
 }
 
+// record the code line and its assigned symbol pair
+void goto_checkt::record_line_assign(const exprt &expr)
+{
+  // find the symbol got assigned in the assign instruction
+  for(auto it = expr.depth_begin(), itend = expr.depth_end();
+      it != itend; ++it)
+  {
+    if(it->id() == ID_symbol)
+    {
+      // assign variable to the dereferenced line
+      line_assign_map.find(expr.find_source_location().get_line())->second
+          = to_symbol_expr(*it).get_identifier();
+      break;
+    }
+  }
+}
+
+// record the relevant lines a symbol appeared
+void goto_checkt::record_symbol_lines(const exprt &expr)
+{
+  // find the symbol got assigned in the assign instruction
+  for(auto it = expr.depth_begin(), itend = expr.depth_end();
+      it != itend; ++it)
+  {
+    if(it->id() == ID_symbol)
+    {
+      if (symbol_line_map.find(to_symbol_expr(*it).get_identifier()) !=
+          symbol_line_map.end())
+      {
+        symbol_line_map[to_symbol_expr(*it).get_identifier()].
+          insert(expr.find_source_location().get_line());
+      }
+      else
+      {
+        lines_t lines;
+        lines.insert(expr.find_source_location().get_line());
+        symbol_line_map.insert(
+            std::make_pair(to_symbol_expr(*it).get_identifier(), lines));
+      }
+    }
+  }
+}
+
+// check if the line going to be skipped assign for any symbol used elsewhere
+void goto_checkt::check_symbol_line_pair()
+{
+  for(line_map_t::iterator l_it = line_assign_map.begin();
+      l_it != line_assign_map.end(); )  // no it++
+  {
+    // the assigned symbol should in symbol table
+    std::cerr << "at line: " << l_it->first << " "<< l_it->second << "\n";
+    assert(symbol_line_map.find(l_it->second) != symbol_line_map.end()
+        || l_it->second == ID_NULL);
+    if(l_it->second == ID_NULL)
+      break;
+    lines_t lines = symbol_line_map.find(l_it->second)->second;
+    assert(lines.find(l_it->first) != lines.end());
+    // the only appearance of the variable is the dereferenced line
+    if(lines.size() == 1)
+      ++l_it;
+    else
+      line_assign_map.erase(l_it++);
+  }
+}
+
 void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
 {
   // we don't look into quantifiers
@@ -1334,7 +1404,6 @@ void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
     else if(expr.id()==ID_index)
     {
       assert(expr.operands().size()==2);
-      //std::cerr << "expr info at address=true && ID_index " << expr.id().get_no() << "\n";
       check_rec(expr.op0(), guard, true);
       check_rec(expr.op1(), guard, false);
     }
@@ -1441,20 +1510,13 @@ void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
 
   if(expr.id()==ID_index)
   {
-    std::cerr << "expr info at address == false && ID_index, ID = " << expr.id() \
-      << ", no = "<< expr.id().get_no() << ", source location: " << expr.source_location() << "\n";
-    std::cerr << "iterate through expression ids: \n";
-    forall_operands(it, expr)
-      std::cerr << expr.id() << " no = " << expr.id().get_no() << "  ";
     bounds_check(to_index_expr(expr), guard);
 
-    //zx
-    if (enable_bounds_check_only){
-      has_dereference = true;
-      //printf("has_dereference = true for expression id: %d \n", expr.id().get_no());
-      //std::cerr << "has_dereference = true for expression id: " << expr.id().get_no() << "\n";
-    }
-
+    // add the line to the set of potentially skippable lines
+    if (enable_bounds_check_only)
+      //put a temporary symbol here
+      line_assign_map.insert(std::make_pair(expr.find_source_location().get_line(),
+           ID_NULL));
   }
   else if(expr.id()==ID_div)
   {
@@ -1508,11 +1570,16 @@ void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
           expr.id()==ID_ge || expr.id()==ID_gt)
     pointer_rel_check(expr, guard);
   else if(expr.id()==ID_dereference)
+  {
     pointer_validity_check(
       to_dereference_expr(expr),
       guard,
       nil_exprt(),
       size_of_expr(expr.type(), ns));
+    if (enable_bounds_check_only)
+      line_assign_map.insert(std::make_pair(expr.find_source_location().get_line(),
+           ID_NULL));
+  }
 }
 
 void goto_checkt::check(const exprt &expr)
@@ -1527,6 +1594,10 @@ void goto_checkt::goto_check(
 {
   assertions.clear();
   mode = _mode;
+
+  //clean up the recorded deref lines and map
+  line_assign_map.clear();
+  symbol_line_map.clear();
 
   bool did_something = false;
 
@@ -1587,19 +1658,22 @@ void goto_checkt::goto_check(
     {
       const code_assignt &code_assign=to_code_assign(i.code);
 
-      check(code_assign.lhs());
       check(code_assign.rhs());
+      check(code_assign.lhs());
+      if(enable_bounds_check_only)
+      {
+        record_symbol_lines(code_assign.rhs());
+        record_symbol_lines(code_assign.lhs());
+      }
+
+      // record the symbol got assigned at the dereferenced line
+      if(enable_bounds_check_only &&
+          line_assign_map.find(code_assign.lhs().
+            find_source_location().get_line()) != line_assign_map.end())
+        record_line_assign(code_assign.lhs());
 
       // the LHS might invalidate any assertion
       invalidate(code_assign.lhs());
-
-      //zx
-      if(enable_bounds_check_only && has_dereference){
-        has_dereference = false;
-        //std::cerr << "found dereference at: " << i.location_number << "\n";
-        i.make_skip();
-      }
-
     }
     else if(i.is_function_call())
     {
@@ -1636,7 +1710,11 @@ void goto_checkt::goto_check(
       }
 
       forall_operands(it, code_function_call)
+      {
         check(*it);
+        if(enable_bounds_check_only)
+          record_symbol_lines(*it);
+      }
 
       // the call might invalidate any assertion
       assertions.clear();
@@ -1787,6 +1865,47 @@ void goto_checkt::goto_check(
       new_code.instructions.pop_front();
       it++;
     }
+  }
+
+  if(enable_bounds_check_only)
+  {
+    // First loop to delete lines with variable assignment that's used later
+    // from the skippable set
+    check_symbol_line_pair();
+    // This iteration for skipping instructions
+    Forall_goto_program_instructions(it, goto_program)
+    {
+      goto_programt::instructiont &i=*it;
+      if(line_assign_map.find(i.source_location.get_line()) != line_assign_map.end()
+          && !(i.is_assert() || i.is_assume()))
+        i.make_skip();
+    }
+  }
+
+  // set flag if there are instructions to be skipped
+  did_something |= !line_assign_map.empty();
+
+  std::cerr << "Dereference line and symbol output:\n";
+
+  for(line_map_t::iterator m_it = line_assign_map.begin();
+      m_it != line_assign_map.end(); m_it++)
+  {
+    std::cerr << m_it->first << ":" << m_it->second << "\n";
+  }
+
+  std::cerr << "Symbol table output:\n";
+
+  for(symbol_map_t::iterator s_it = symbol_line_map.begin();
+      s_it != symbol_line_map.end(); s_it++)
+  {
+    std::cerr << "sym: " <<  s_it->first << "\nlines:";
+    lines_t l = s_it->second;
+    for(lines_t::iterator li_it = l.begin();
+        li_it != l.end(); li_it++)
+    {
+      std::cerr << *li_it << " ";
+    }
+    std::cerr <<  "\n";
   }
 
   if(did_something)
