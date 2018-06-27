@@ -134,6 +134,7 @@ protected:
   void record_line_assign(const exprt &expr);
   void record_symbol_lines(const exprt &expr, bool lhs);
   void check_symbol_line_pair();
+  void print_symbol_line_info();
 
   bool enable_bounds_check;
   bool enable_pointer_check;
@@ -1382,7 +1383,7 @@ void goto_checkt::check_symbol_line_pair()
       l_it != line_assign_map.end(); )  // no it++
   {
     // the assigned symbol should in symbol table
-    std::cerr << "at line: " << l_it->first << " "<< l_it->second << "\n";
+    //std::cerr << "at line: " << l_it->first << " "<< l_it->second << "\n";
     assert(symbol_line_map.find(l_it->second) != symbol_line_map.end()
         || l_it->second == ID_NULL);
     if(l_it->second == ID_NULL)
@@ -1397,6 +1398,39 @@ void goto_checkt::check_symbol_line_pair()
       ++l_it;
     else
       line_assign_map.erase(l_it++);
+  }
+}
+
+void goto_checkt::print_symbol_line_info()
+{
+
+  std::cerr << "====================================\n";
+
+  if(line_assign_map.empty())
+    std::cerr << "No line is skipped\n";
+  else
+  {
+    std::cerr << "=== Skipped line and symbol ===\n";
+    for(line_map_t::iterator m_it = line_assign_map.begin();
+        m_it != line_assign_map.end(); m_it++)
+    {
+      std::cerr << m_it->first << ":" << m_it->second << "\n";
+    }
+
+    std::cerr << "=== Symbol table output ===\n";
+
+    for(symbol_map_t::iterator s_it = symbol_line_map.begin();
+        s_it != symbol_line_map.end(); s_it++)
+    {
+      std::cerr << "sym: " <<  s_it->first << "\nlines:";
+      lines_t l = s_it->second;
+      for(lines_t::iterator li_it = l.begin();
+          li_it != l.end(); li_it++)
+      {
+        std::cerr << *li_it << " ";
+      }
+      std::cerr <<  "\n";
+    }
   }
 }
 
@@ -1882,44 +1916,25 @@ void goto_checkt::goto_check(
 
   if(enable_bounds_check_only)
   {
-    // First loop to delete lines with variable assignment that's used later
+    // delete lines with variable assignment that's used later
     // from the skippable set
     check_symbol_line_pair();
     // This iteration for skipping instructions
     Forall_goto_program_instructions(it, goto_program)
     {
       goto_programt::instructiont &i=*it;
-      if(line_assign_map.find(i.source_location.get_line()) != line_assign_map.end()
-          && !(i.is_assert() || i.is_assume()))
+      if(line_assign_map.find(i.source_location.get_line()) !=
+          line_assign_map.end())
+      {
         i.make_skip();
+      }
     }
   }
 
   // set flag if there are instructions to be skipped
   did_something |= !line_assign_map.empty();
 
-  std::cerr << "Dereference line and symbol output:\n";
-
-  for(line_map_t::iterator m_it = line_assign_map.begin();
-      m_it != line_assign_map.end(); m_it++)
-  {
-    std::cerr << m_it->first << ":" << m_it->second << "\n";
-  }
-
-  std::cerr << "Symbol table output:\n";
-
-  for(symbol_map_t::iterator s_it = symbol_line_map.begin();
-      s_it != symbol_line_map.end(); s_it++)
-  {
-    std::cerr << "sym: " <<  s_it->first << "\nlines:";
-    lines_t l = s_it->second;
-    for(lines_t::iterator li_it = l.begin();
-        li_it != l.end(); li_it++)
-    {
-      std::cerr << *li_it << " ";
-    }
-    std::cerr <<  "\n";
-  }
+  print_symbol_line_info();
 
   if(did_something)
     remove_skip(goto_program);
