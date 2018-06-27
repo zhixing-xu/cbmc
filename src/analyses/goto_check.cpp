@@ -1417,8 +1417,7 @@ void goto_checkt::print_symbol_line_info()
       std::cerr << m_it->first << ":" << m_it->second << "\n";
     }
 
-    std::cerr << "=== Symbol table output ===\n";
-
+    std::cerr << "=== Symbol table output: ===\n";
     for(symbol_map_t::iterator s_it = symbol_line_map.begin();
         s_it != symbol_line_map.end(); s_it++)
     {
@@ -1667,6 +1666,7 @@ void goto_checkt::goto_check(
       assertions.clear();
 
     check(i.guard);
+    record_symbol_lines(i.guard, false);
 
     // magic ERROR label?
     for(const auto &label : error_labels)
@@ -1693,6 +1693,7 @@ void goto_checkt::goto_check(
       if(statement==ID_expression)
       {
         check(i.code);
+        record_symbol_lines(i.code, false);
       }
       else if(statement==ID_printf)
       {
@@ -1924,7 +1925,7 @@ void goto_checkt::goto_check(
     {
       goto_programt::instructiont &i=*it;
       if(line_assign_map.find(i.source_location.get_line()) !=
-          line_assign_map.end())
+          line_assign_map.end() && !(i.is_assert() || i.is_assume()))
       {
         i.make_skip();
       }
