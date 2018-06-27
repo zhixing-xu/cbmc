@@ -132,7 +132,7 @@ protected:
 
   void invalidate(const exprt &lhs);
   void record_line_assign(const exprt &expr);
-  void record_symbol_lines(const exprt &expr);
+  void record_symbol_lines(const exprt &expr, bool lhs);
   void check_symbol_line_pair();
 
   bool enable_bounds_check;
@@ -1127,7 +1127,7 @@ void goto_checkt::bounds_check(
   ode.build(expr, ns);
 
   if(index.type().id()!=ID_unsignedbv)
-  {
+    {
     // we undo typecasts to signedbv
     if(index.id()==ID_typecast &&
        index.operands().size()==1 &&
@@ -1341,8 +1341,9 @@ void goto_checkt::record_line_assign(const exprt &expr)
 }
 
 // record the relevant lines a symbol appeared
-void goto_checkt::record_symbol_lines(const exprt &expr)
+void goto_checkt::record_symbol_lines(const exprt &expr, bool lhs)
 {
+  bool first = true;
   // find the symbol got assigned in the assign instruction
   for(auto it = expr.depth_begin(), itend = expr.depth_end();
       it != itend; ++it)
@@ -1352,13 +1353,21 @@ void goto_checkt::record_symbol_lines(const exprt &expr)
       if (symbol_line_map.find(to_symbol_expr(*it).get_identifier()) !=
           symbol_line_map.end())
       {
+        if(lhs && first)
+        {
+          first = false;
+          continue;
+        }
         symbol_line_map[to_symbol_expr(*it).get_identifier()].
           insert(expr.find_source_location().get_line());
       }
       else
       {
         lines_t lines;
-        lines.insert(expr.find_source_location().get_line());
+        if(lhs && first)
+          first = false;
+        else
+          lines.insert(expr.find_source_location().get_line());
         symbol_line_map.insert(
             std::make_pair(to_symbol_expr(*it).get_identifier(), lines));
       }
@@ -1377,11 +1386,14 @@ void goto_checkt::check_symbol_line_pair()
     assert(symbol_line_map.find(l_it->second) != symbol_line_map.end()
         || l_it->second == ID_NULL);
     if(l_it->second == ID_NULL)
+    {
+      line_assign_map.erase(l_it++);
       break;
+    }
     lines_t lines = symbol_line_map.find(l_it->second)->second;
-    assert(lines.find(l_it->first) != lines.end());
+    //assert(lines.find(l_it->first) != lines.end());
     // the only appearance of the variable is the dereferenced line
-    if(lines.size() == 1)
+    if(lines.size() == 0)
       ++l_it;
     else
       line_assign_map.erase(l_it++);
@@ -1662,15 +1674,16 @@ void goto_checkt::goto_check(
       check(code_assign.lhs());
       if(enable_bounds_check_only)
       {
-        record_symbol_lines(code_assign.rhs());
-        record_symbol_lines(code_assign.lhs());
+        record_symbol_lines(code_assign.rhs(), false);
+        record_symbol_lines(code_assign.lhs(), true);
       }
 
       // record the symbol got assigned at the dereferenced line
       if(enable_bounds_check_only &&
           line_assign_map.find(code_assign.lhs().
-            find_source_location().get_line()) != line_assign_map.end())
+          find_source_location().get_line()) != line_assign_map.end())
         record_line_assign(code_assign.lhs());
+
 
       // the LHS might invalidate any assertion
       invalidate(code_assign.lhs());
@@ -1713,7 +1726,7 @@ void goto_checkt::goto_check(
       {
         check(*it);
         if(enable_bounds_check_only)
-          record_symbol_lines(*it);
+          record_symbol_lines(*it, false);
       }
 
       // the call might invalidate any assertion
