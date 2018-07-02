@@ -1935,7 +1935,8 @@ void goto_checkt::goto_check(
   // set flag if there are instructions to be skipped
   did_something |= !line_assign_map.empty();
 
-  print_symbol_line_info();
+  if(enable_bounds_check_only)
+    print_symbol_line_info();
 
   if(did_something)
     remove_skip(goto_program);
