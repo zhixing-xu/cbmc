@@ -3580,7 +3580,7 @@ std::string expr2ct::convert_with_precedence(
   else if(src.id()==ID_invalid_pointer)
     return convert_function(src, "__CPROVER_invalid_pointer", precedence=16);
 
-  else if(src.id()==ID_dynamic_object)
+  else if(src.id()==ID_is_dynamic_object)
     return convert_function(src, "DYNAMIC_OBJECT", precedence=16);
 
   else if(src.id()=="is_zero_string")
